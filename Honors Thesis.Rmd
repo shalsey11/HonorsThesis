@@ -1,0 +1,214 @@
+---
+title: "Honors Thesis: Mental Health Among Meredith College Students"
+author: "Sarah Halsey"
+date: "3/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Beginnings
+Here, I am installing various packages necessary to complete this project. Packages include tidyverse,...
+I am also reading in the survey data, titling it 'survey'.
+
+```{r install-packages, echo = FALSE, message = FALSE, include=FALSE}
+# install.packages("tidyverse")
+library(tidyverse)
+library(tidymodels)
+library(caret)
+```
+
+```{r reading-in-data, echo=FALSE, message=FALSE, include=FALSE}
+survey <- read_csv("~/Desktop/Mental Health Among Collegiate Athletes.csv")
+glimpse(survey)
+```
+
+## Data Wrangling
+
+We also need to rename the variables to make them easier to work with. 
+Variables needed to clean up:
+*Are you on an athletic team? --> athlete
+*Major(or intended, if not yet declared) --> major1
+*Are you obtaining a Bachelors of Science or Bachelors of Arts for Major? --> degree1
+*Second Major(if applicable) --> major2
+*Are you obtaining a Bachelors of Science or Bachelors of Arts for Major#2? --> degree2
+*Cumulative GPA (Round to 2 decimal places) --> cumgpa
+*Major GPA (Round to 2 decimal places) --> majorgpa
+
+```{r renaming-variables}
+survey1 <- survey %>%
+  rename(athlete = `Are you on an athletic team at Meredith College?`,
+         major1 = `Major (or intended, if not yet declared)`,
+         degree1 = `Are you obtaining a Bachelors of Arts or Bachelors of Science for Major?`,
+         major2 =  `Second Major (if applicable)`,
+         degree2 = `Are you obtaining a Bachelors of Arts or Bachelors of Science for Major #2? (if applicable)`,
+         cumgpa = `Cumulative GPA (round to 2 decimal places)`,
+         majorgpa = `Major GPA (round to 2 decimal places)`)
+
+view(survey1)
+```
+
+
+
+*Anxiety Symptoms:
+- Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Numbness or tingling] --> numbting
+
+-Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Feeling hot] --> hot
+
+-Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Wobbliness in legs] --> wobble
+
+-Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Unable to relax] --> norelax
+
+-same format for rest of anxiety symptoms
+
+
+```{r renaming-anxiety-symptoms}
+survey1 <- survey1 %>%
+  rename(numbting = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Numbness or tingling]`,
+         hot = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Feeling hot]`,
+         wobble = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Wobbliness in legs]`,
+         norelax = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Unable to relax]`,
+         fear_worst = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Fear of worst happening]`,
+         dizzy_light = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Dizzy or lightheadeed]`,
+         heart_race = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Heart pounding / racing]`,
+         unsteady = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Unsteady]`,
+         afraid = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Terrified or afraid]`,
+         nervous = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Nervous]`,
+         choking = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Feeling of choking]`,
+         hands_tremble = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Hands trembling]`,
+         shaky = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Shaky / unsteady]`,
+         fear_control = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Fear of losing control]`,
+         diff_breath = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Difficulty in breathing]`,
+         fear_dying = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Fear of dying]`,
+         scared = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Scared]`,
+         indigest =  `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Indigestion]`,
+         faint = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Faint / lightheaded]`,
+         face_flush = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Face flushed]`,
+         sweats = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Hot / cold sweats]`)
+
+view(survey1)
+```
+
+
+Renaming rest of the variables:
+
+```{r renaming-rest-of-variables}
+survey1 <- survey1 %>%
+  rename(seek_help = `Would you seek help for anxiety?`,
+         years_college_sport = `How many years have you been a collegiate athlete?`,
+         freq_play = `Based on your frequency of participating, how would you classify your status in your sport?`,
+         years_sport = `How long have you been playing your sport competitively? (Please just type number of years)`,
+         concussion = `How many times have you had a concussion? (if any)`)
+
+view(survey1)
+```
+
+Removing first 2 columns:
+```{r remove-first-2-columns}
+survey1 <- subset(survey1, select = -c(`Timestamp`, `Participant’s Online DECISION:If you choose NOT to participate, please close your browser at this time.If you choose to participate in this research study, please read the statement below and indicate your consent by checking the box and submitting your response. You will then be taken to the survey. Before submitting, please print a copy of this consent page for your records.`))
+
+view(survey1)
+```
+
+
+We need to clean up some of this data, including making variables binary. The variables we are making binary are as follows:
+*athlete  --> no = 0, yes = 1
+*degree1 --> BA = 0, BS = 1
+*degree2--> BA = 0, BS = 1
+*concussion --> 0 = 1, 1,2,3,4,5+ = 1
+
+```{r binary-variables-athlete}
+survey1<- survey1 %>%
+    mutate(athlete = case_when(athlete == "Yes" ~ "1",
+                              athlete == "No" ~ "0"),
+           athlete = as.factor(athlete))
+```
+
+```{r binary-variables-degree1}
+survey1<- survey1 %>%
+  mutate(degree1 = case_when(degree1 == "Bachelors of Science" ~ "1",
+                              degree1 == "Bachelors of Arts" ~ "0"),
+           degree1 = as.factor(degree1))
+```
+
+```{r binary-variables-degree2}
+survey1<- survey1 %>%
+  mutate(degree2 = case_when(degree2 == "Bachelors of Science" ~ "1",
+                              degree2 == "Bachelors of Arts" ~ "0"),
+           degree2 = as.factor(degree2))
+```
+
+```{r binary-variables-concussion}
+survey1<- survey1 %>%
+  mutate(concussion = case_when(concussion == "1" ~ "1",
+                                concussion == "2" ~ "1",
+                                concussion == "3" ~ "1",
+                                concussion == "4" ~ "1",
+                                concussion == "5+" ~ "1",
+                                concussion == "0" ~ "0"),
+         concussion = as.factor(concussion))
+```
+
+## Early Data Analysis (Visuals)
+```{r visual-athletes  vs. nonathletes}
+ggplot(data = survey1, aes(x = athlete)) +
+  geom_histogram(stat = "count")
+
+survey1 %>%
+  filter(athlete == "1") %>%
+  ggplot(aes(x=athlete)) + geom_histogram(stat="count") + facet_wrap(~Sport)
+```
+```{r 1}
+ggplot(data = survey1, aes(x=anxiety_total)) +
+  geom_bar()
+```
+
+creating new variable that sums all of anxiety symptoms
+
+```{r  total-anxiety}
+survey1$anxiety_total = rowSums(survey1[c(9:29)])
+view(survey1)
+```
+
+```{r graph}
+ggplot(data = survey1, aes(x=anxiety_total)) +
+  geom_boxplot() + facet_wrap(~athlete)
+
+plot(survey1$athlete, survey1$anxiety_total)
+
+ggplot(data = survey1, aes(x=Sport, y = anxiety_total)) +
+  geom_point()
+
+tapply(survey1$anxiety_total, survey1$athlete, summary)
+```
+```{r plot}
+plot(survey1$degree1, survey1$anxiety_total)
+```
+
+```{r plot1}
+plot(survey1$concussion, survey1$anxiety_total)
+```
+
+
+```{r plot2}
+ggplot(data = survey1, aes(y=anxiety_total)) +
+  geom_histogram() + facet_wrap(~Year)
+```
+
+```{r plot3}
+survey1 %>%
+  filter(athlete == "1") %>%
+  ggplot(aes(x = Sport, y = anxiety_total)) +
+  geom_point()
+```
+```{r plot4}
+ggplot(data = survey1, aes(x = cumgpa, y = anxiety_total)) +
+  geom_point()
+```
+
+## Categorizing Variables
+
+
+
