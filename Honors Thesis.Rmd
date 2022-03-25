@@ -21,7 +21,7 @@ library(caret)
 ```
 
 ```{r reading-in-data, echo=FALSE, message=FALSE, include=FALSE}
-survey <- read_csv("~/Desktop/Mental Health Among Collegiate Athletes.csv")
+survey <- read_csv("Mental Health Among Collegiate Athletes.csv")
 glimpse(survey)
 ```
 
