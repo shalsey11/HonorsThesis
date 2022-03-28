@@ -18,10 +18,13 @@ I am also reading in the survey data, titling it 'survey'.
 library(tidyverse)
 library(tidymodels)
 library(caret)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
 ```
 
 ```{r reading-in-data, echo=FALSE, message=FALSE, include=FALSE}
-survey <- read_csv("Mental Health Among Collegiate Athletes1.csv")
+survey <- read_csv("Mental Health Among Collegiate Athletes2.csv")
 glimpse(survey)
 ```
 
@@ -168,6 +171,7 @@ survey1 <- survey1 %>%
                                major1 == "Graphic Design"  ~ "Arts & Humanities",
                                major1 == "Studio Art" ~ "Arts & Humanities",
                                major1 == "Communication" ~ "Arts & Humanities",
+                               major1 == "Communications" ~ "Arts & Humanities",
                                major1 == "Dance" ~ "Arts & Humanities",
                                major1 == "Dance Education" ~ "Arts & Humanities",
                                major1 == "Theatre" ~ "Arts & Humanities",
@@ -182,6 +186,7 @@ survey1 <- survey1 %>%
                                major1 == "Sociology" ~ "Arts & Humanities",
                                major1 == "Spanish" ~ "Arts & Humanities",
                                major1 == "Business Administration" ~ "Business",
+                               major1 == "Business" ~ "Business",
                                major1 == "Economics" ~ "Business",
                                major1 == "Hospitality & Tourism Management" ~ "Business",
                                major1 == "Education" ~ "Education, Health, & Human Sciences",
@@ -190,6 +195,7 @@ survey1 <- survey1 %>%
                                major1 == "Fashion Merchandising & Design" ~ "Education, Health, & Human Sciences",
                                major1 == "Interior Design" ~ "Education, Health, & Human Sciences",
                                major1 == "Exercise & Sports Science" ~ "Education, Health, & Human Sciences",
+                               major1 == "Exercise Sports & Science" ~ "Education, Health, & Human Sciences",
                                major1 == "Food & Nutrition" ~ "Education, Health, & Human Sciences",
                                major1 == "Psychology" ~ "Education, Health, & Human Sciences",
                                major1 == "Social Work" ~ "Education, Health, & Human Sciences",
@@ -202,14 +208,36 @@ survey1 <- survey1 %>%
                                major1 == "Engineering" ~ "Natural & Mathematical Sciences"))
 ```
 
+```{r dropping-graduates}
+survey1 <- subset(survey1, major_group == "Arts & Humanities" | major_group == "Business" | major_group == "Education, Health, & Human Sciences" | major_group == "Natural & Mathematical Sciences")
+
+view(survey1)
+```
+
 
 ```{r categorizing-gpa}
+#survey1 <- survey1 %>%
+  #mutate(gpa_group = case_when(cumgpa >= 3.7 ~ "3.7 - 4.0",
+                               #cumgpa >= 3.4 ~ "3.4 - 3.7",
+                               #cumgpa >= 3.0 ~ "3.0 - 3.4",
+                               #cumgpa >= 2.5 ~ "2.5 - 3.0",
+                               #TRUE ~ "below 2.5"))
+```
+
+```{r categorizing-gpa2}
 survey1 <- survey1 %>%
-  mutate(gpa_group = case_when(majorgpa >= 3.7 ~ "3.7 - 4.0",
-                               majorgpa >= 3.4 ~ "3.4 - 3.7",
-                               majorgpa >= 3.0 ~ "3.0 - 3.4",
-                               majorgpa >= 2.5 ~ "2.5 - 3.0",
-                               TRUE ~ "below 2.5"))
+  mutate(gpa_group = case_when(cumgpa < 2.5 ~ "below 2.5",
+                                cumgpa >= 2.5 & cumgpa < 3.0 ~ "2.5 - 3.0",
+                                cumgpa >= 3.0 & cumgpa < 3.4 ~ "3.0 - 3.4",
+                                cumgpa >= 3.4 & cumgpa < 3.7 ~ "3.4 - 3.7",
+                                cumgpa >= 3.7 ~ "3.7 - 4.0"))
+```
+
+```{r test}
+test <-
+survey1 %>%
+filter_at(vars(starts_with("gpa_group2")), any_vars(is.na(.)))
+view(test)
 ```
 
 
@@ -219,7 +247,8 @@ In order to make this variable binary, I collapsed the moderate and severe anxie
 ```{r making-anxiety_total-binary }
 survey1 <- survey1 %>%
   mutate(anxiety_total_level = case_when(anxiety_total >= 22 ~ "1",
-                                        TRUE ~ "0"))
+                                        TRUE ~ "0"),
+                  anxiety_total_level = as.factor(anxiety_total_level))
 view(survey1)
 ```
 
@@ -247,19 +276,7 @@ view(survey1)
 
 ## Early Data Analysis (Visuals)
 
-Below is a graph representing points of anxiety_total based on gpa group. This is  a little difficult to see. 
-```{r graph}
-ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total)) +
-  geom_point()
-
-```
-
-```{r graph 1}
-ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total)) +
-  geom_boxplot()
-```
-
-
+See how many athletes/nonathletes responded. We also see how many people from each sport responded. 
 ```{r visual-athletes  vs. nonathletes}
 ggplot(data = survey1, aes(x = athlete)) +
   geom_histogram(stat = "count")
@@ -268,66 +285,54 @@ survey1 %>%
   filter(athlete == "1") %>%
   ggplot(aes(x=athlete)) + geom_histogram(stat="count") + facet_wrap(~Sport)
 ```
-```{r 1}
+
+Distribution of total_anxiety score
+```{r distribution-anxiety_total}
 ggplot(data = survey1, aes(x=anxiety_total)) +
   geom_bar()
 ```
 
-
-```{r graph}
-ggplot(data = survey1, aes(x=anxiety_total)) +
-  geom_boxplot() + facet_wrap(~athlete)
+Boxplot of athlete vs. total anxiety score & summary stats
+```{r boxplot-anxiety_total-athlete-and-summary_stats}
 
 plot(survey1$athlete, survey1$anxiety_total)
 
-ggplot(data = survey1, aes(x=Sport, y = anxiety_total)) +
-  geom_point()
-
 tapply(survey1$anxiety_total, survey1$athlete, summary)
 ```
-```{r plot}
-plot(survey1$degree1, survey1$anxiety_total)
-```
-
-```{r plot1}
+Boxplot of whether you have had a concussion and total anxiety score
+```{r boxplot-concussion-anxiety_total}
 plot(survey1$concussion, survey1$anxiety_total)
 ```
 
 
-```{r plot2}
+Boxplot of year and anxiety total
+```{r boxplot-year-anxiety_total}
 survey1 %>%
   filter(Year == "Freshman" | Year == "Junior" | Year == "Sophomore" | Year == "Senior") %>%
 ggplot(aes(x = Year, y=anxiety_total)) +
   geom_boxplot()
 ```
 
-```{r plot3}
-survey1 %>%
-  filter(athlete == "1") %>%
-  ggplot(aes(x = Sport, y = anxiety_total)) +
-  geom_point()
-```
-```{r plot4}
-ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total)) +
-  geom_point()
-```
-
+Boxplot of anxiety_total by gpa_group
 ```{r boxplot-anxiety_total-gpa_group}
-ggplot(data = survey1, aes(y = anxiety_total, color = gpa_group)) + geom_boxplot() + labs(y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA") + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+ggplot(data = survey1, aes(y = anxiety_total, color = gpa_group)) + geom_boxplot() + labs(y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA Range") + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 ```
-```{r plot5}
+Density curve of anxiety_total
+```{r density-anxiety_total}
 ggplot(data = survey1, aes(x = anxiety_total)) +
   geom_density()
 ```
-
-```{r plot6}
+Density curve of anxiety_total by GPA group
+```{r density-anxiety_total-gpa_group}
 ggplot(data = survey1, 
        mapping = aes(x = anxiety_total, 
                      color = gpa_group)) +
   geom_density()
 ```
 
-```{r plot7}
+
+Density curve of anxiety_total by major_group
+```{r density-anxiety_total-major_group}
 ggplot(data = survey1, 
        mapping = aes(x = anxiety_total,
                      color = major_group)) +
@@ -340,6 +345,141 @@ ggplot(data = survey1,
 ggplot(data = survey1, mapping = aes(y = anxiety_total, color = major_group)) +
   geom_boxplot() +  labs(y = "Anxiety Total Score ", title = "Distribution of  Anxiety", subtitle  = "By Academic Department", color = "Department")  + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 ```
+
+
+## Official Visuals
+
+# BoxPlots
+
+```{r releveling-gpa_group}
+survey1$gpa_group2 = factor(survey1$gpa_group2, levels=c("below 2.5", "2.5-3.0", "3.0-3.4", "3.4-3.7", "3.7-4.0"))
+```
+
+```{r boxplot-anxiety_total-gpa_group}
+ggplot(data = survey1, aes(x = gpa_group2, y = anxiety_total, color = gpa_group2)) + geom_boxplot() + labs(x = "GPA Range", y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA Range")
+  
+  #scale_x_discrete(limits = rev(levels(survey1$gpa_group2)))
+  
+  #theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+
+
+
+
+
+
+# Stacked Bar Charts
+```{r anxiety-prevelance_athlete}
+survey1 %>%
+  filter(athlete =="1" | athlete =="0") %>%
+  ggplot(aes(x = athlete, fill = anxiety_total_level)) +
+  geom_bar(position = "fill") +
+  labs(
+    x = 'Athlete', 
+    fill = "Anxiety Prevelance", 
+    y = NULL,
+    title = 'Anxiety Prevelance', subtitle = 'By Athletic Distinction'
+    ) +
+  scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+```{r re-factoring-Department}
+survey1$major_group = factor(survey1$major_group, levels=c("Arts & Humanities", "Education, Health, & Human Sciences", "Business", "Natural & Mathematical Sciences"))
+```
+
+```{r  anxiety-prevelance_department}
+survey1 %>%
+  filter(major_group =="Arts & Humanities" | major_group == "Business" | major_group == "Education, Health, & Human Sciences" | major_group == "Natural & Mathematical Sciences") %>%
+  ggplot(aes(x = major_group, fill = anxiety_total_level)) +
+  geom_bar(position = "fill") +
+  labs(
+    x = 'Department', 
+    fill = "Anxiety Prevelance", 
+    y = NULL,
+    title = 'Anxiety Prevelance', subtitle = 'By Academic Department'
+    ) + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+
+```{r re-factoring-Year}
+survey1$Year = factor(survey1$Year, levels=c("Freshman", "Sophomore", "Junior", "Senior"))
+```
+
+
+```{r anxiety-prevelance_class-year}
+survey1 %>%
+  filter(Year == "Freshman" | Year == "Sophomore" | Year == "Junior" | Year == "Senior") %>%
+  ggplot(aes(x = Year, fill = anxiety_total_level)) +
+  geom_bar(position = "fill") +
+  labs(
+    x = 'Year', 
+    fill = "Anxiety Prevelance", 
+    y = NULL,
+    title = 'Prevelance of Anxiety', subtitle = 'By Class Year'
+    ) +
+  scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+```{r plot3}
+survey1 %>%
+  filter(gpa_group == "below 2.5" | gpa_group == "2.5 - 3.0" | gpa_group == "3.0 - 3.4" | gpa_group == "3.4 - 3.7" | gpa_group == "3.7 - 4.0") %>%
+  ggplot(aes(x = gpa_group, fill = anxiety_total_level)) +
+  geom_bar(position = "fill") +
+  labs(
+    x = 'GPA', 
+    fill = "Anxiety Prevelance", 
+    y = NULL,
+    title = 'Prevelance of Anxiety', subtitle = 'By Class Year'
+    ) +
+  scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+
+```{r gpa-anxiety_total}
+survey1 %>%
+  ggplot(aes(x = gpa_group, y = anxiety_total_level, fill = anxiety_total_level, color = anxiety_total_level)) +
+  geom_density_ridges2(alpha = 0.5) +
+  labs(
+    x = "Number of characters (in thousands)", 
+    y = "Spam",
+    title = "Spam vs. number of characters"
+    ) +
+  guides(color = FALSE, fill = FALSE) +
+  scale_fill_manual(values = c("#E48957", "#CA235F")) +
+  scale_color_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+## Logistic Regression
+
+```{r xreating-new-data-fram}
+survey2 <- survey1 %>%
+  select(Year, athlete, major_group, cumgpa, anxiety_total_level, gpa_group2) %>%
+  drop_na()
+```
+
+```{r splitting-data-driveers, echo=FALSE, include=FALSE}
+set.seed(1234)
+survey2_split <- initial_split(survey2, prop = 0.75)
+survey2_train <- training(survey2_split)
+survey2_test <- testing(survey2_split)
+```
+
+```{r refactoring}
+survey1 <- survey1 %>%
+  mutate(type = if_else(pop == "Vic", "1", "0"),
+         type = as.factor(type))
+```
+
+```{r logisitic-regression}
+anxiety_fit <- glm(anxiety_total_level ~ cumgpa + major_group + athlete + Year, data = survey2, family = "binomial")
+
+tidy(anxiety_fit)
+```
+
+
+
+
+
 
 
 
