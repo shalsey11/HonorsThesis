@@ -21,9 +21,11 @@ library(caret)
 ```
 
 ```{r reading-in-data, echo=FALSE, message=FALSE, include=FALSE}
-survey <- read_csv("Mental Health Among Collegiate Athletes.csv")
+survey <- read_csv("Mental Health Among Collegiate Athletes1.csv")
 glimpse(survey)
 ```
+
+
 
 ## Data Wrangling
 
@@ -46,11 +48,7 @@ survey1 <- survey %>%
          degree2 = `Are you obtaining a Bachelors of Arts or Bachelors of Science for Major #2? (if applicable)`,
          cumgpa = `Cumulative GPA (round to 2 decimal places)`,
          majorgpa = `Major GPA (round to 2 decimal places)`)
-
-view(survey1)
 ```
-
-
 
 *Anxiety Symptoms:
 - Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Numbness or tingling] --> numbting
@@ -88,6 +86,17 @@ survey1 <- survey1 %>%
          face_flush = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Face flushed]`,
          sweats = `Please check the symptoms you have experienced within this past school year (starting in August 2021) due to anxiety (Beck Anxiety Inventory). | Select the severity of each symptom: 0 (not severe), 1 (mild), 2 (moderately), 3 (severe) [Hot / cold sweats]`)
 
+```
+
+```{r remove-first-2-columns}
+survey1 <- subset(survey1, select = -c(`Timestamp`, `Participant’s Online DECISION:If you choose NOT to participate, please close your browser at this time.If you choose to participate in this research study, please read the statement below and indicate your consent by checking the box and submitting your response. You will then be taken to the survey. Before submitting, please print a copy of this consent page for your records.`))
+
+```
+
+creating new variable that sums all of anxiety symptoms
+
+```{r  total-anxiety}
+survey1$anxiety_total = rowSums(survey1[c(9:29)])
 view(survey1)
 ```
 
@@ -101,16 +110,8 @@ survey1 <- survey1 %>%
          freq_play = `Based on your frequency of participating, how would you classify your status in your sport?`,
          years_sport = `How long have you been playing your sport competitively? (Please just type number of years)`,
          concussion = `How many times have you had a concussion? (if any)`)
-
-view(survey1)
 ```
 
-Removing first 2 columns:
-```{r remove-first-2-columns}
-survey1 <- subset(survey1, select = -c(`Timestamp`, `Participant’s Online DECISION:If you choose NOT to participate, please close your browser at this time.If you choose to participate in this research study, please read the statement below and indicate your consent by checking the box and submitting your response. You will then be taken to the survey. Before submitting, please print a copy of this consent page for your records.`))
-
-view(survey1)
-```
 
 
 We need to clean up some of this data, including making variables binary. The variables we are making binary are as follows:
@@ -151,7 +152,114 @@ survey1<- survey1 %>%
          concussion = as.factor(concussion))
 ```
 
+
+## Categorizing Variables
+
+Need to categorize major, GPA, anxiety_total, and sport (team vs. individual)
+- Major is by overall department, per Meredith College.
+- GPA categories 
+- Anxiety total levels based on Beck Anxiety Inventory
+    - 0 - 21 --> "0"
+    - 22 - 63 --> "1"
+
+```{r categorizing major}
+survey1 <- survey1 %>%
+  mutate(major_group = case_when(major1 == "Art Education" ~ "Arts & Humanities",
+                               major1 == "Graphic Design"  ~ "Arts & Humanities",
+                               major1 == "Studio Art" ~ "Arts & Humanities",
+                               major1 == "Communication" ~ "Arts & Humanities",
+                               major1 == "Dance" ~ "Arts & Humanities",
+                               major1 == "Dance Education" ~ "Arts & Humanities",
+                               major1 == "Theatre" ~ "Arts & Humanities",
+                               major1 == "English" ~ "Arts & Humanities",
+                               major1 == "History" ~ "Arts & Humanities",
+                               major1 == "International Studies" ~ "Arts & Humanities",
+                               major1 == "Political Science" ~ "Arts & Humanities",
+                               major1 == "Music" ~ "Arts & Humanities",
+                               major1 == "Music Education" ~ "Arts & Humanities",
+                               major1 == "Religious & Ethical Studies" ~ "Arts & Humanities",
+                               major1 == "Criminology" ~ "Arts & Humanities",
+                               major1 == "Sociology" ~ "Arts & Humanities",
+                               major1 == "Spanish" ~ "Arts & Humanities",
+                               major1 == "Business Administration" ~ "Business",
+                               major1 == "Economics" ~ "Business",
+                               major1 == "Hospitality & Tourism Management" ~ "Business",
+                               major1 == "Education" ~ "Education, Health, & Human Sciences",
+                               major1 == "Child Development" ~ "Education, Health, & Human Sciences",
+                               major1 == "Family & Consumer Sciences" ~ "Education, Health, & Human Sciences",
+                               major1 == "Fashion Merchandising & Design" ~ "Education, Health, & Human Sciences",
+                               major1 == "Interior Design" ~ "Education, Health, & Human Sciences",
+                               major1 == "Exercise & Sports Science" ~ "Education, Health, & Human Sciences",
+                               major1 == "Food & Nutrition" ~ "Education, Health, & Human Sciences",
+                               major1 == "Psychology" ~ "Education, Health, & Human Sciences",
+                               major1 == "Social Work" ~ "Education, Health, & Human Sciences",
+                               major1 == "Biology" ~ "Natural & Mathematical Sciences",
+                               major1 == "Environmental Sustainability" ~ "Natural & Mathematical Sciences",
+                               major1 == "Public Health" ~ "Natural & Mathematical Sciences",
+                               major1 == "Chemistry" ~ "Natural & Mathematical Sciences",
+                               major1 == "Computer Science" ~ "Natural & Mathematical Sciences",
+                               major1 == "Mathematics" ~ "Natural & Mathematical Sciences",
+                               major1 == "Engineering" ~ "Natural & Mathematical Sciences"))
+```
+
+
+```{r categorizing-gpa}
+survey1 <- survey1 %>%
+  mutate(gpa_group = case_when(majorgpa >= 3.7 ~ "3.7 - 4.0",
+                               majorgpa >= 3.4 ~ "3.4 - 3.7",
+                               majorgpa >= 3.0 ~ "3.0 - 3.4",
+                               majorgpa >= 2.5 ~ "2.5 - 3.0",
+                               TRUE ~ "below 2.5"))
+```
+
+
+According to Beck Anxiety Inventory, those who have a score of 0-21 indicates very low anxiety. Those in the range of 22-35 have moderate anxiety, and those who have a sum of over 36 indicates severe anxiety.
+In order to make this variable binary, I collapsed the moderate and severe anxiety group into one group. Those who have a range of 22-63 would be designtated with 1, while those with less than 22 would be given a 0.
+
+```{r making-anxiety_total-binary }
+survey1 <- survey1 %>%
+  mutate(anxiety_total_level = case_when(anxiety_total >= 22 ~ "1",
+                                        TRUE ~ "0"))
+view(survey1)
+```
+
+
+We then categorize sport. If it is a team sport or individual. 
+Team Sports: Basketball, Softball, Soccer, Volleyball, Lacrosse, Field Hockey --> will be distinguished with a 1
+Individual: Golf, Track & Field, Cross Country, Tennis --> will be distinguished with a  0
+
+```{r cateogorizing-binary-sport}
+survey1 <- survey1 %>%
+  mutate(sport_group = case_when(Sport == "Basketball" ~ "1",
+                                 Sport == "Softball" ~ "1",
+                                 Sport == "Soccer" ~ "1",
+                                 Sport == "Volleyball" ~ "1",
+                                 Sport == "Lacrosse" ~ "1",
+                                 Sport == "Field Hockey" ~ "1",
+                                 Sport == "Golf" ~ "0",
+                                 Sport == "Track & Field" ~ "0",
+                                 Sport == "Cross Country" ~ "0",
+                                 Sport == "Tennis" ~ "0"))
+
+view(survey1)
+```
+
+
 ## Early Data Analysis (Visuals)
+
+Below is a graph representing points of anxiety_total based on gpa group. This is  a little difficult to see. 
+```{r graph}
+ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total)) +
+  geom_point()
+
+```
+
+```{r graph 1}
+ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total)) +
+  geom_boxplot()
+```
+
+
 ```{r visual-athletes  vs. nonathletes}
 ggplot(data = survey1, aes(x = athlete)) +
   geom_histogram(stat = "count")
@@ -165,12 +273,6 @@ ggplot(data = survey1, aes(x=anxiety_total)) +
   geom_bar()
 ```
 
-creating new variable that sums all of anxiety symptoms
-
-```{r  total-anxiety}
-survey1$anxiety_total = rowSums(survey1[c(9:29)])
-view(survey1)
-```
 
 ```{r graph}
 ggplot(data = survey1, aes(x=anxiety_total)) +
@@ -193,8 +295,10 @@ plot(survey1$concussion, survey1$anxiety_total)
 
 
 ```{r plot2}
-ggplot(data = survey1, aes(y=anxiety_total)) +
-  geom_histogram() + facet_wrap(~Year)
+survey1 %>%
+  filter(Year == "Freshman" | Year == "Junior" | Year == "Sophomore" | Year == "Senior") %>%
+ggplot(aes(x = Year, y=anxiety_total)) +
+  geom_boxplot()
 ```
 
 ```{r plot3}
@@ -204,11 +308,45 @@ survey1 %>%
   geom_point()
 ```
 ```{r plot4}
-ggplot(data = survey1, aes(x = cumgpa, y = anxiety_total)) +
+ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total)) +
   geom_point()
 ```
 
-## Categorizing Variables
+```{r boxplot-anxiety_total-gpa_group}
+ggplot(data = survey1, aes(y = anxiety_total, color = gpa_group)) + geom_boxplot() + labs(y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA") + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+```{r plot5}
+ggplot(data = survey1, aes(x = anxiety_total)) +
+  geom_density()
+```
+
+```{r plot6}
+ggplot(data = survey1, 
+       mapping = aes(x = anxiety_total, 
+                     color = gpa_group)) +
+  geom_density()
+```
+
+```{r plot7}
+ggplot(data = survey1, 
+       mapping = aes(x = anxiety_total,
+                     color = major_group)) +
+  geom_density()
+```
+
+
+
+```{r boxplot-anxiety_total-major_group}
+ggplot(data = survey1, mapping = aes(y = anxiety_total, color = major_group)) +
+  geom_boxplot() +  labs(y = "Anxiety Total Score ", title = "Distribution of  Anxiety", subtitle  = "By Academic Department", color = "Department")  + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+
+
+
+
+
+
+
 
 
 
