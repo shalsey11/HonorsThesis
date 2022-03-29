@@ -21,6 +21,7 @@ library(caret)
 library(dplyr)
 library(ggplot2)
 library(ggridges)
+library(naniar)
 ```
 
 ```{r reading-in-data, echo=FALSE, message=FALSE, include=FALSE}
@@ -224,6 +225,15 @@ view(survey1)
                                #TRUE ~ "below 2.5"))
 ```
 
+```{r replacing-83}
+survey1 <- 
+  survey1 %>% replace_with_na(replace = list(cumgpa = "Transfer student, no gpa yet"))
+```
+
+```{r making-cumgpa-numeric}
+survey1$cumgpa <- as.numeric(as.character(survey1$cumgpa))  
+```
+
 ```{r categorizing-gpa2}
 survey1 <- survey1 %>%
   mutate(gpa_group = case_when(cumgpa < 2.5 ~ "below 2.5",
@@ -352,11 +362,11 @@ ggplot(data = survey1, mapping = aes(y = anxiety_total, color = major_group)) +
 # BoxPlots
 
 ```{r releveling-gpa_group}
-survey1$gpa_group2 = factor(survey1$gpa_group2, levels=c("below 2.5", "2.5-3.0", "3.0-3.4", "3.4-3.7", "3.7-4.0"))
+survey1$gpa_group = factor(survey1$gpa_group, levels=c("below 2.5", "2.5-3.0", "3.0-3.4", "3.4-3.7", "3.7-4.0"))
 ```
 
 ```{r boxplot-anxiety_total-gpa_group}
-ggplot(data = survey1, aes(x = gpa_group2, y = anxiety_total, color = gpa_group2)) + geom_boxplot() + labs(x = "GPA Range", y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA Range")
+ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total, color = gpa_group)) + geom_boxplot() + labs(x = "GPA Range", y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA Range")
   
   #scale_x_discrete(limits = rev(levels(survey1$gpa_group2)))
   
@@ -451,7 +461,7 @@ survey1 %>%
 
 ## Logistic Regression
 
-```{r xreating-new-data-fram}
+```{r creating-new-data-fram}
 survey2 <- survey1 %>%
   select(Year, athlete, major_group, cumgpa, anxiety_total_level, gpa_group2) %>%
   drop_na()
@@ -459,27 +469,42 @@ survey2 <- survey1 %>%
 
 ```{r splitting-data-driveers, echo=FALSE, include=FALSE}
 set.seed(1234)
-survey2_split <- initial_split(survey2, prop = 0.75)
-survey2_train <- training(survey2_split)
-survey2_test <- testing(survey2_split)
-```
-
-```{r refactoring}
-survey1 <- survey1 %>%
-  mutate(type = if_else(pop == "Vic", "1", "0"),
-         type = as.factor(type))
+survey1_split <- initial_split(survey1, prop = 0.80)
+survey1_train <- training(survey1_split)
+survey1_test <- testing(survey1_split)
 ```
 
 ```{r logisitic-regression}
-anxiety_fit <- glm(anxiety_total_level ~ cumgpa + major_group + athlete + Year, data = survey2, family = "binomial")
+anxiety_fit <- glm(anxiety_total_level ~ gpa_group + major_group + athlete + Year, data = survey1, family = "binomial")
 
 tidy(anxiety_fit)
 ```
 
+```{r confusion-matrix}
+pred_train <- predict(anxiety_fit, survey1_train, type = "response")
+#Calculate predicted 0/1 values for the  injury variable using a threshold of 0.5:
+pred_num <- ifelse(pred_train > 0.5, 1, 0)
+pred_num <- factor(pred_num, levels = c(0,1))
+confusionMatrix(pred_num, survey1_train$anxiety_total_level)
+```
 
+```{r ROC-curve}
+anxiety_pred <- as_tibble(pred_train)
 
+anxiety_pred %>%
+  roc_curve(
+    truth = survey1_train$anxiety_total_level,
+    value,
+    event_level = "second") %>%
+  autoplot()
 
-
+anxiety_pred %>%
+  roc_auc(
+    truth = survey1_train$anxiety_total_level,
+    value,
+    event_level = "second"
+  )
+```
 
 
 
