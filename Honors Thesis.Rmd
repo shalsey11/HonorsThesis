@@ -236,18 +236,12 @@ survey1$cumgpa <- as.numeric(as.character(survey1$cumgpa))
 
 ```{r categorizing-gpa2}
 survey1 <- survey1 %>%
-  mutate(gpa_group = case_when(cumgpa < 2.5 ~ "below 2.5",
-                                cumgpa >= 2.5 & cumgpa < 3.0 ~ "2.5 - 3.0",
+  mutate(gpa_group = case_when(cumgpa < 2.6 ~ "below 2.6",
+                                cumgpa >= 2.6 & cumgpa < 3.0 ~ "2.6 - 3.0",
                                 cumgpa >= 3.0 & cumgpa < 3.4 ~ "3.0 - 3.4",
                                 cumgpa >= 3.4 & cumgpa < 3.7 ~ "3.4 - 3.7",
                                 cumgpa >= 3.7 ~ "3.7 - 4.0"))
-```
-
-```{r test}
-test <-
-survey1 %>%
-filter_at(vars(starts_with("gpa_group2")), any_vars(is.na(.)))
-view(test)
+survey1$gpa_group <- fct_relevel(survey1$gpa_group, "below 2.6", "2.6 - 3.0", "3.0 - 3.4", "3.4 - 3.7", "3.7 - 4.0")
 ```
 
 
@@ -352,8 +346,8 @@ ggplot(data = survey1,
 
 
 ```{r boxplot-anxiety_total-major_group}
-ggplot(data = survey1, mapping = aes(y = anxiety_total, color = major_group)) +
-  geom_boxplot() +  labs(y = "Anxiety Total Score ", title = "Distribution of  Anxiety", subtitle  = "By Academic Department", color = "Department")  + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+ggplot(data = survey1, mapping = aes(x = major_group, y = anxiety_total)) +
+  geom_boxplot() +  labs(x = "Academic Department", y = "Total Anxiety Score ", title = "Distribution of Total Anxiety Score", subtitle  = "By Academic Department") + geom_hline(yintercept = 21, linetype = "dashed", color = "orange") + geom_hline(yintercept = 36, linetype = "dashed", color = "red") + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
 ```
 
 
@@ -388,7 +382,7 @@ survey1 %>%
     x = 'Athlete', 
     fill = "Anxiety Prevelance", 
     y = NULL,
-    title = 'Anxiety Prevelance', subtitle = 'By Athletic Distinction'
+    title = 'Prevelance of Anxiety', subtitle = 'By Athletic Distinction'
     ) +
   scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
 ```
@@ -403,10 +397,10 @@ survey1 %>%
   ggplot(aes(x = major_group, fill = anxiety_total_level)) +
   geom_bar(position = "fill") +
   labs(
-    x = 'Department', 
+    x = 'Academic Department', 
     fill = "Anxiety Prevelance", 
     y = NULL,
-    title = 'Anxiety Prevelance', subtitle = 'By Academic Department'
+    title = 'Prevelance of Anxiety', subtitle = 'By Academic Department'
     ) + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
 ```
 
@@ -430,9 +424,9 @@ survey1 %>%
   scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
 ```
 
-```{r plot3}
+```{r anxiety-prevelance-class-year}
 survey1 %>%
-  filter(gpa_group == "below 2.5" | gpa_group == "2.5 - 3.0" | gpa_group == "3.0 - 3.4" | gpa_group == "3.4 - 3.7" | gpa_group == "3.7 - 4.0") %>%
+  filter(gpa_group == "below 2.6" | gpa_group == "2.6 - 3.0" | gpa_group == "3.0 - 3.4" | gpa_group == "3.4 - 3.7" | gpa_group == "3.7 - 4.0") %>%
   ggplot(aes(x = gpa_group, fill = anxiety_total_level)) +
   geom_bar(position = "fill") +
   labs(
@@ -447,69 +441,69 @@ survey1 %>%
 
 ```{r gpa-anxiety_total}
 survey1 %>%
-  ggplot(aes(x = gpa_group, y = anxiety_total_level, fill = anxiety_total_level, color = anxiety_total_level)) +
+  filter(cumgpa <= 4.0) %>%
+  ggplot(aes(x = cumgpa, y = anxiety_total_level, fill = anxiety_total_level, color = anxiety_total_level)) +
   geom_density_ridges2(alpha = 0.5) +
   labs(
-    x = "Number of characters (in thousands)", 
-    y = "Spam",
-    title = "Spam vs. number of characters"
+    x = "GPA", 
+    y = "Anxiety Prevelance",
+    title = "GPA vs. Anxiety Prevelance"
     ) +
   guides(color = FALSE, fill = FALSE) +
   scale_fill_manual(values = c("#E48957", "#CA235F")) +
-  scale_color_manual(values = c("#DEB4A0", "#CA235F"))
+  scale_color_manual(values = c("#DEB4A0", "#CA235F")) + xlim(2,4)
 ```
 
 ## Logistic Regression
 
-```{r creating-new-data-fram}
-survey2 <- survey1 %>%
-  select(Year, athlete, major_group, cumgpa, anxiety_total_level, gpa_group2) %>%
-  drop_na()
-```
-
-```{r splitting-data-driveers, echo=FALSE, include=FALSE}
+```{r splitting-data-drivers, echo=FALSE, include=FALSE}
 set.seed(1234)
 survey1_split <- initial_split(survey1, prop = 0.80)
 survey1_train <- training(survey1_split)
 survey1_test <- testing(survey1_split)
 ```
 
-```{r logisitic-regression}
-anxiety_fit <- glm(anxiety_total_level ~ gpa_group + major_group + athlete + Year, data = survey1, family = "binomial")
+```{r logisitic-regression-with-gpa_group}
+anxiety_fit1 <- glm(anxiety_total_level ~ gpa_group + major_group + athlete + Year, data = survey1_train, family = "binomial")
 
-tidy(anxiety_fit)
+tidy(anxiety_fit1)
 ```
 
-```{r confusion-matrix}
-pred_train <- predict(anxiety_fit, survey1_train, type = "response")
+```{r confusion-matrix-with-anxiety_fit1}
+pred_test1 <- predict(anxiety_fit1, survey1_test, type = "response")
 #Calculate predicted 0/1 values for the  injury variable using a threshold of 0.5:
-pred_num <- ifelse(pred_train > 0.5, 1, 0)
-pred_num <- factor(pred_num, levels = c(0,1))
-confusionMatrix(pred_num, survey1_train$anxiety_total_level)
+pred_num1 <- ifelse(pred_test1 > 0.5, 1, 0)
+pred_num1 <- factor(pred_num1, levels = c(0,1))
+confusionMatrix(pred_num1, survey1_test$anxiety_total_level)
 ```
 
-```{r ROC-curve}
-anxiety_pred <- as_tibble(pred_train)
 
-anxiety_pred %>%
+
+```{r confusion-matrix-with-anxiety_fit1}
+pred_train1 <- predict(anxiety_fit, survey1_train, type = "response")
+#Calculate predicted 0/1 values for the  injury variable using a threshold of 0.5:
+pred_num1 <- ifelse(pred_train1 > 0.5, 1, 0)
+pred_num1 <- factor(pred_num1, levels = c(0,1))
+confusionMatrix(pred_num1, survey1_train$anxiety_total_level)
+```
+
+```{r ROC-curve-with-anxiety_fit1}
+anxiety_pred1 <- as_tibble(pred_train)
+
+anxiety_pred1 %>%
   roc_curve(
     truth = survey1_train$anxiety_total_level,
     value,
     event_level = "second") %>%
   autoplot()
 
-anxiety_pred %>%
+anxiety_pred1 %>%
   roc_auc(
     truth = survey1_train$anxiety_total_level,
     value,
     event_level = "second"
   )
 ```
-
-
-
-
-
 
 
 
