@@ -101,7 +101,6 @@ creating new variable that sums all of anxiety symptoms
 
 ```{r  total-anxiety}
 survey1$anxiety_total = rowSums(survey1[c(9:29)])
-view(survey1)
 ```
 
 
@@ -277,6 +276,11 @@ survey1 <- survey1 %>%
 view(survey1)
 ```
 
+```{r dropping-graduates}
+survey1 <- subset(survey1, Year == "Freshman" | Year == "Sophomore" | Year == "Junior" | Year == "Senior")
+view(survey1)
+```
+
 
 ## Early Data Analysis (Visuals)
 
@@ -321,11 +325,13 @@ Boxplot of anxiety_total by gpa_group
 ```{r boxplot-anxiety_total-gpa_group}
 ggplot(data = survey1, aes(y = anxiety_total, color = gpa_group)) + geom_boxplot() + labs(y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA Range") + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 ```
+
 Density curve of anxiety_total
 ```{r density-anxiety_total}
 ggplot(data = survey1, aes(x = anxiety_total)) +
   geom_density()
 ```
+
 Density curve of anxiety_total by GPA group
 ```{r density-anxiety_total-gpa_group}
 ggplot(data = survey1, 
@@ -345,11 +351,6 @@ ggplot(data = survey1,
 
 
 
-```{r boxplot-anxiety_total-major_group}
-ggplot(data = survey1, mapping = aes(x = major_group, y = anxiety_total)) +
-  geom_boxplot() +  labs(x = "Academic Department", y = "Total Anxiety Score ", title = "Distribution of Total Anxiety Score", subtitle  = "By Academic Department") + geom_hline(yintercept = 21, linetype = "dashed", color = "orange") + geom_hline(yintercept = 36, linetype = "dashed", color = "red") + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
-```
-
 
 ## Official Visuals
 
@@ -362,13 +363,13 @@ survey1$gpa_group = factor(survey1$gpa_group, levels=c("below 2.5", "2.5-3.0", "
 ```{r boxplot-anxiety_total-gpa_group}
 ggplot(data = survey1, aes(x = gpa_group, y = anxiety_total, color = gpa_group)) + geom_boxplot() + labs(x = "GPA Range", y = "Total Anxiety Score", title = "Distribution of Total Anxiety Score", subtitle = "By GPA", color = "GPA Range")
   
-  #scale_x_discrete(limits = rev(levels(survey1$gpa_group2)))
-  
-  #theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 ```
 
 
-
+```{r boxplot-anxiety_total-major_group}
+ggplot(data = survey1, mapping = aes(x = major_group, y = anxiety_total)) +
+  geom_boxplot() +  labs(x = "Academic Department", y = "Total Anxiety Score ", title = "Distribution of Total Anxiety Score", subtitle  = "By Academic Department") + geom_hline(yintercept = 21, linetype = "dashed", color = "orange") + geom_hline(yintercept = 36, linetype = "dashed", color = "red") + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
 
 
 
@@ -433,7 +434,7 @@ survey1 %>%
     x = 'GPA', 
     fill = "Anxiety Prevelance", 
     y = NULL,
-    title = 'Prevelance of Anxiety', subtitle = 'By Class Year'
+    title = 'Prevelance of Anxiety', subtitle = 'By GPA'
     ) +
   scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
 ```
@@ -454,11 +455,42 @@ survey1 %>%
   scale_color_manual(values = c("#DEB4A0", "#CA235F")) + xlim(2,4)
 ```
 
+## Visuals for Athletes
+```{r boxplot-anxiety-total-sportt}
+survey1 %>%
+  filter(Sport != is.na()) %>%
+ggplot(data = survey1, mapping = aes(x = Sport, y = anxiety_total)) +
+  geom_boxplot() +  labs(x = "Sport", y = "Total Anxiety Score ", title = "Distribution of Total Anxiety Score", subtitle  = "By Sport") + geom_hline(yintercept = 21, linetype = "dashed", color = "orange") + geom_hline(yintercept = 36, linetype = "dashed", color = "red") + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+```{r }
+survey1 %>%
+  filter(athlete == "1") %>%
+ggplot(data = survey1, mapping = aes(x = Sport, y = anxiety_total)) +
+  geom_point() +  labs(x = "Sport", y = "Total Anxiety Score ", title = "Distribution of Total Anxiety Score", subtitle  = "By Sport") + geom_hline(yintercept = 21, linetype = "dashed", color = "orange") + geom_hline(yintercept = 36, linetype = "dashed", color = "red") + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+
+
+```{r anxiety-prevelance_sport_level}
+survey1 %>%
+  filter(sport_group == "0" | sport_group == "1") %>%
+  ggplot(aes(x = sport_group, fill = anxiety_total_level)) +
+  geom_bar(position = "fill") +
+  labs(
+    x = 'Individual or Team', 
+    fill = "Anxiety Prevelance", 
+    y = NULL,
+    title = 'Prevelance of Anxiety', subtitle = 'By Individual or Team Sport'
+    ) +
+  scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
+```
+
+
 ## Logistic Regression
 
 ```{r splitting-data-drivers, echo=FALSE, include=FALSE}
-set.seed(1234)
-survey1_split <- initial_split(survey1, prop = 0.80)
+set.seed(1357)
+survey1_split <- initial_split(survey1, prop = 0.75)
 survey1_train <- training(survey1_split)
 survey1_test <- testing(survey1_split)
 ```
@@ -470,25 +502,25 @@ tidy(anxiety_fit1)
 ```
 
 ```{r confusion-matrix-with-anxiety_fit1}
+pred_train1 <- predict(anxiety_fit1, survey1_train, type = "response")
+#Calculate predicted 0/1 values for the  injury variable using a threshold of 0.5:
+pred_num1 <- ifelse(pred_train1 > 0.3, 1, 0)
+pred_num1 <- factor(pred_num1, levels = c(0,1))
+confusionMatrix(pred_num1, survey1_train$anxiety_total_level)
+```
+
+```{r confusion-matrix-with-anxiety_fit1}
 pred_test1 <- predict(anxiety_fit1, survey1_test, type = "response")
 #Calculate predicted 0/1 values for the  injury variable using a threshold of 0.5:
-pred_num1 <- ifelse(pred_test1 > 0.5, 1, 0)
+pred_num1 <- ifelse(pred_test1 > 0.3, 1, 0)
 pred_num1 <- factor(pred_num1, levels = c(0,1))
 confusionMatrix(pred_num1, survey1_test$anxiety_total_level)
 ```
 
 
 
-```{r confusion-matrix-with-anxiety_fit1}
-pred_train1 <- predict(anxiety_fit, survey1_train, type = "response")
-#Calculate predicted 0/1 values for the  injury variable using a threshold of 0.5:
-pred_num1 <- ifelse(pred_train1 > 0.5, 1, 0)
-pred_num1 <- factor(pred_num1, levels = c(0,1))
-confusionMatrix(pred_num1, survey1_train$anxiety_total_level)
-```
-
 ```{r ROC-curve-with-anxiety_fit1}
-anxiety_pred1 <- as_tibble(pred_train)
+anxiety_pred1 <- as_tibble(pred_train1)
 
 anxiety_pred1 %>%
   roc_curve(
