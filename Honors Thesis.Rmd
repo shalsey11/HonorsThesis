@@ -455,11 +455,16 @@ survey1 %>%
   scale_color_manual(values = c("#DEB4A0", "#CA235F")) + xlim(2,4)
 ```
 
+
 ## Visuals for Athletes
 ```{r boxplot-anxiety-total-sportt}
 survey1 %>%
-  filter(Sport != is.na()) %>%
-ggplot(data = survey1, mapping = aes(x = Sport, y = anxiety_total)) +
+  filter(!is.na(Sport)) %>%
+  mutate(Sport2 = case_when(Sport == "Track & Field"~ "TF/CC",
+                            Sport == "Cross Country" ~ "TF/CC",
+                            TRUE ~ Sport)) %>%
+  filter(Sport2 != "Volleyball" & Sport2 != "Tennis") %>%
+ggplot(mapping = aes(x = Sport2, y = anxiety_total)) +
   geom_boxplot() +  labs(x = "Sport", y = "Total Anxiety Score ", title = "Distribution of Total Anxiety Score", subtitle  = "By Sport") + geom_hline(yintercept = 21, linetype = "dashed", color = "orange") + geom_hline(yintercept = 36, linetype = "dashed", color = "red") + theme(axis.text.x = element_text(size = 8, angle = 10)) + scale_fill_manual(values = c("#DEB4A0", "#CA235F"))
 ```
 ```{r }
@@ -499,6 +504,12 @@ survey1_test <- testing(survey1_split)
 anxiety_fit1 <- glm(anxiety_total_level ~ gpa_group + major_group + athlete + Year, data = survey1_train, family = "binomial")
 
 tidy(anxiety_fit1)
+```
+
+## Example Student
+```{r example-student}
+newdata <- tibble(gpa_group = "2.6 - 3.0", major_group = "Business", athlete = "0", Year = "Junior")
+anxiety_fit1 %>% predict(newdata, type = "response")
 ```
 
 ```{r confusion-matrix-with-anxiety_fit1}
